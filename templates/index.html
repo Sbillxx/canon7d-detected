@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>PHOTOBOX STUDIO</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Efek Kilat / Flash Kamera -->
+  <div id="flash-overlay" class="flash-overlay"></div>
+
+  <!-- Status Bar Atas -->
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-icon">📸</span>
+      <span class="brand-name">PHOTOBOX STUDIO</span>
+    </div>
+    <div class="system-status">
+      <span id="cam-indicator" class="status-dot red"></span>
+      <span id="cam-text">Menghubungkan Kamera...</span>
+    </div>
+  </header>
+
+  <!-- ================= SCREEN 1: STANDBY / WELCOME ================= -->
+  <section id="screen-welcome" class="screen active">
+    <div class="welcome-container">
+      <div class="vintage-badge">EST. 2026 • PHOTO STUDIO</div>
+      <h1 class="welcome-title">Capture Your Moment</h1>
+      <p class="welcome-subtitle">Abadikan senyum dan gaya terbaikmu bersama teman-teman!</p>
+      
+      <button id="btn-start" class="btn-primary pulse-btn">
+        <span class="btn-text">TAP UNTUK MEMULAI</span>
+        <span class="btn-arrow">➔</span>
+      </button>
+
+      <div class="features-pill">
+        <span>✨ 3 Pose Seru</span>
+        <span>🎞️ Auto Photo Strip</span>
+        <span>📱 Download via QR Code</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 2: PILIH GAYA / SETUP ================= -->
+  <section id="screen-setup" class="screen">
+    <div class="setup-container">
+      <h2 class="section-title">Pilih Gaya Photobox</h2>
+      
+      <!-- Pilihan Layout -->
+      <div class="option-group">
+        <label class="group-label">Layout Strip:</label>
+        <div class="pill-selector" id="layout-selector">
+          <button class="pill-opt active" data-val="strip_3">
+            <span class="pill-icon">3️⃣</span> 3 Pose Strip
+          </button>
+          <button class="pill-opt" data-val="strip_4">
+            <span class="pill-icon">4️⃣</span> 4 Pose Strip
+          </button>
+          <button class="pill-opt" data-val="grid_4">
+            <span class="pill-icon">🔲</span> 2x2 Grid Postcard
+          </button>
+        </div>
+      </div>
+
+      <!-- Pilihan Warna Frame -->
+      <div class="option-group">
+        <label class="group-label">Warna Frame Kertas:</label>
+        <div class="color-palette" id="color-selector">
+          <button class="color-swatch active" data-val="white" style="background:#ffffff;" title="Putih Klasik"></button>
+          <button class="color-swatch" data-val="black" style="background:#181818;" title="Hitam Elegan"></button>
+          <button class="color-swatch" data-val="pink" style="background:#F7D6D0;" title="Pink Pastel"></button>
+          <button class="color-swatch" data-val="beige" style="background:#F4EBD9;" title="Vintage Beige"></button>
+          <button class="color-swatch" data-val="sage" style="background:#D8E2DC;" title="Sage Green"></button>
+        </div>
+      </div>
+
+      <div class="setup-actions">
+        <button id="btn-back-welcome" class="btn-secondary">Kembali</button>
+        <button id="btn-ready-shoot" class="btn-primary">Lanjut ke Kamera ➔</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 3: LIVE VIEW & COUNTDOWN ================= -->
+  <section id="screen-shoot" class="screen">
+    <div class="shoot-container">
+      
+      <!-- Live View Mirror Box -->
+      <div class="liveview-wrapper">
+        <img id="liveview-img" src="/static/img/placeholder.jpg" alt="Live View Kamera">
+        
+        <!-- Overlay Petunjuk Pose -->
+        <div class="pose-badge" id="pose-indicator">Pose 1 dari 3</div>
+
+        <!-- Overlay Countdown Angka Besar -->
+        <div class="countdown-overlay" id="countdown-overlay">
+          <span id="countdown-num">3</span>
+        </div>
+
+        <!-- Notifikasi Antar Pose -->
+        <div class="intermission-overlay" id="intermission-overlay">
+          <p class="intermission-title">Bagus Sekali! 👏</p>
+          <p class="intermission-sub">Siap-siap untuk pose berikutnya...</p>
+        </div>
+      </div>
+
+      <!-- Thumbnails Hasil Pose yang Sudah Terambil -->
+      <div class="thumbs-ribbon" id="thumbs-ribbon"></div>
+
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 4: PROCESSING / GENERATING ================= -->
+  <section id="screen-processing" class="screen">
+    <div class="processing-container">
+      <div class="spinner"></div>
+      <h2>Sedang Mencetak Kenanganmu...</h2>
+      <p>Menyusun photo strip resolusi tinggi & membuat QR Code</p>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 5: PREVIEW & CUSTOMIZE ================= -->
+  <section id="screen-preview" class="screen">
+    <div class="preview-layout">
+      <!-- Sisi Kiri: Tampilan Photo Strip Jadi -->
+      <div class="strip-showcase">
+        <div class="strip-card">
+          <img id="preview-strip-img" src="" alt="Hasil Photo Strip">
+        </div>
+      </div>
+
+      <!-- Sisi Kanan: Kontrol Filter & Aksi -->
+      <div class="preview-controls">
+        <h2 class="preview-title">Hasil Photobox Kamu! 🎉</h2>
+        <p class="preview-desc">Pilih filter warna yang kamu sukai:</p>
+
+        <!-- Filter Selector -->
+        <div class="filter-group">
+          <button class="btn-filter active" data-filter="original">Original</button>
+          <button class="btn-filter" data-filter="bw">Black & White</button>
+          <button class="btn-filter" data-filter="vintage">Warm Vintage</button>
+          <button class="btn-filter" data-filter="cool">Cool Breeze</button>
+        </div>
+
+        <div class="action-buttons">
+          <button id="btn-show-qr" class="btn-primary full-width">
+            <span>📱 Ambil Foto Digital (Scan QR)</span>
+          </button>
+          
+          <button id="btn-print" class="btn-accent full-width">
+            <span>🖨️ Cetak Foto Fisik</span>
+          </button>
+
+          <button id="btn-retake" class="btn-secondary full-width">
+            <span>🔄 Foto Ulang</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MODAL / POPUP: SCAN QR CODE ================= -->
+  <div id="modal-qr" class="modal">
+    <div class="modal-card">
+      <h3>Scan QR Code untuk Download 📥</h3>
+      <p>Buka kamera HP kamu dan arahkan ke kode di bawah untuk menyimpan foto langsung ke galeri!</p>
+      
+      <div class="qr-box">
+        <img id="qr-code-img" src="" alt="QR Code Download">
+      </div>
+
+      <div class="auto-reset-timer">
+        Kembali ke layar utama dalam <strong id="reset-seconds">20</strong> detik...
+      </div>
+
+      <button id="btn-finish-session" class="btn-primary">Selesai / Sesi Baru</button>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Foto - PHOTOBOX STUDIO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0f1115;
+      color: #f1f3f5;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #ff9068;
+      border: 1px solid rgba(255, 144, 104, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+    p.sub {
+      font-size: 14px;
+      color: #a0a6b1;
+    }
+    .card {
+      background: #1a1d24;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .strip-wrapper {
+      background: #0d0e12;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .strip-wrapper img {
+      width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .btn-download {
+      display: block;
+      background: linear-gradient(135deg, #fd746c, #ff9068);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      text-decoration: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(253, 116, 108, 0.4);
+      margin-bottom: 20px;
+    }
+    .raw-section {
+      margin-top: 24px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .raw-section h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #cbd5e1;
+    }
+    .raw-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .raw-grid a {
+      display: block;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      background: #252830;
+    }
+    .raw-grid img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    footer {
+      margin-top: auto;
+      padding-top: 32px;
+      font-size: 12px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="badge">PHOTOBOX STUDIO</div>
+    <h1>Foto Kamu Siap! ✨</h1>
+    <p class="sub">Tekan tombol download atau simpan foto langsung ke galeri</p>
+  </div>
+
+  <div class="card">
+    {% if strip_url %}
+    <div class="strip-wrapper">
+      <img src="{{ strip_url }}" alt="Photo Strip">
+    </div>
+    <a href="{{ strip_url }}" download="photobox_strip_{{ session_id }}.jpg" class="btn-download">
+      📥 Download Photo Strip HD
+    </a>
+    {% else %}
+    <p style="padding: 30px; color: #94a3b8;">Photo strip belum dibuat.</p>
+    {% endif %}
+  </div>
+
+  {% if raw_photos %}
+  <div class="raw-section">
+    <h3>Foto Individual Pose:</h3>
+    <div class="raw-grid">
+      {% for p in raw_photos %}
+      <a href="{{ p }}" target="_blank" download>
+        <img src="{{ p }}" alt="Pose">
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <footer>
+    PHOTOBOX STUDIO • Dibuat dengan Canon EOS 7D
+  </footer>
+
+</body>
+</html>
+
