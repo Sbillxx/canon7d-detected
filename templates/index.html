@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>PHOTOBOX STUDIO</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=2">
+  <link rel="stylesheet" href="/static/css/style.css?v=3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
@@ -20,6 +20,14 @@
       <span class="brand-icon">📸</span>
       <span class="brand-name">PHOTOBOX STUDIO</span>
     </div>
+    
+    <!-- Floating Global Session Timer (3 Menit) -->
+    <div id="session-timer-pill" class="session-timer-pill" style="display: none;">
+      <span class="timer-icon">⏱️</span>
+      <span class="timer-label">Sisa Waktu:</span>
+      <span id="session-timer-text">03:00</span>
+    </div>
+
     <div class="system-status">
       <span id="cam-indicator" class="status-dot red"></span>
       <span id="cam-text">Menghubungkan Kamera...</span>
@@ -97,7 +105,7 @@
     </div>
   </section>
 
-  <!-- ================= SCREEN 3: LIVE VIEW & COUNTDOWN ================= -->
+  <!-- ================= SCREEN 3: LIVE VIEW & MANUAL SHOOT ================= -->
   <section id="screen-shoot" class="screen">
     <div class="shoot-container">
       
@@ -122,6 +130,11 @@
         <!-- Overlay Petunjuk Pose -->
         <div class="pose-badge" id="pose-indicator">Pose 1 dari 3</div>
 
+        <!-- Indikator Mode Ganti / Retake -->
+        <div class="retake-banner" id="retake-banner" style="display: none;">
+          🔄 MODE FOTO ULANG: KOTAK <span id="retake-target-num">1</span>
+        </div>
+
         <!-- Tombol Flip / Mirror View -->
         <button id="btn-toggle-mirror" class="mirror-toggle-btn" type="button" title="Flip / Balik Tampilan">
           🔄 <span id="mirror-btn-text">Flip Normal</span>
@@ -139,13 +152,47 @@
         </div>
       </div>
 
-      <!-- Thumbnails Hasil Pose yang Sudah Terambil -->
-      <div class="thumbs-ribbon" id="thumbs-ribbon"></div>
+      <!-- Kontrol Tombol Jepret Manual -->
+      <div class="shoot-controls">
+        <button id="btn-trigger-capture" class="btn-primary btn-capture-large pulse-btn">
+          <span class="cam-icon">📸</span>
+          <span id="btn-capture-text">AMBIL FOTO (3s)</span>
+        </button>
+        <p class="shoot-hint">Bebas ngaca dulu ya! Klik tombol atau tekan <strong>SPASI</strong> saat posisimu sudah siap.</p>
+      </div>
+
+      <!-- Slots Tray Hasil Pose yang Sudah Terambil -->
+      <div class="slots-tray" id="slots-tray"></div>
 
     </div>
   </section>
 
-  <!-- ================= SCREEN 4: PROCESSING / GENERATING ================= -->
+  <!-- ================= SCREEN 4: REVIEW & SELECTIVE RETAKE HUB ================= -->
+  <section id="screen-review" class="screen">
+    <div class="review-container">
+      <div class="review-header">
+        <div class="vintage-badge">REVIEW & SELEKSI FOTO</div>
+        <h2 class="section-title">Lihat Hasil Gayamu! ✨</h2>
+        <p class="review-sub">Ada pose yang kurang pas? Klik tombol <strong>Ganti Foto</strong> di bawah kotak foto yang ingin kamu ulang.</p>
+      </div>
+
+      <!-- Grid Kartu Foto per Slot -->
+      <div class="slots-cards-grid" id="review-cards-grid">
+        <!-- Dimasukkan secara dinamis via JavaScript -->
+      </div>
+
+      <div class="review-footer">
+        <button id="btn-proceed-print" class="btn-primary btn-large">
+          <span>✅ Sudah Pas! Lanjut Cetak & QR ➔</span>
+        </button>
+        <div class="review-timer-info">
+          ⏱️ Sisa waktu berpose: <strong id="review-timer-text">02:30</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 5: PROCESSING / GENERATING ================= -->
   <section id="screen-processing" class="screen">
     <div class="processing-container">
       <div class="spinner"></div>
@@ -154,7 +201,7 @@
     </div>
   </section>
 
-  <!-- ================= SCREEN 5: PREVIEW & CUSTOMIZE ================= -->
+  <!-- ================= SCREEN 6: PREVIEW & CUSTOMIZE ================= -->
   <section id="screen-preview" class="screen">
     <div class="preview-layout">
       <!-- Sisi Kiri: Tampilan Photo Strip Jadi -->
@@ -194,6 +241,16 @@
     </div>
   </section>
 
+  <!-- ================= MODAL / POPUP: WAKTU BERPOSE HABIS ================= -->
+  <div id="modal-times-up" class="modal">
+    <div class="modal-card">
+      <div style="font-size: 54px; margin-bottom: 12px;">⏰</div>
+      <h3>Waktu Berpose Habis!</h3>
+      <p>Sesi 3 menitmu sudah selesai. Foto-foto yang sudah kamu ambil akan otomatis disusun untuk dicetak.</p>
+      <button id="btn-times-up-ok" class="btn-primary full-width" type="button">Lanjut ke Cetak & Download ➔</button>
+    </div>
+  </div>
+
   <!-- ================= MODAL / POPUP: SCAN QR CODE ================= -->
   <div id="modal-qr" class="modal">
     <div class="modal-card">
@@ -212,7 +269,7 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=2"></script>
+  <script src="/static/js/app.js?v=3"></script>
 </body>
 </html>
 

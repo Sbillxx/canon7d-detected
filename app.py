@@ -19,6 +19,8 @@ import requests
 from photostrip import create_photostrip
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 # Direktori Proyek
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,6 +34,9 @@ for d in [RAW_DIR, STRIPS_DIR, QR_DIR]:
 
 DCC_BASE_URL = "http://localhost:5513"
 DCC_REMOTECMD = r"A:\digicam\CameraControlRemoteCmd.exe"
+PUBLIC_BASE_URL = os.environ.get(
+    "PUBLIC_BASE_URL", "https://always-overcome-demanding.ngrok-free.dev"
+)
 
 # HTTP Session dengan persistent connection pooling agar tidak lag
 http_session = requests.Session()
@@ -42,6 +47,7 @@ http_session.mount("http://", adapter)
 session_state = {
     "session_id": None,
     "session_folder": None,
+    "slots": [],  # List path foto per kotak grid
     "photos": [],
     "layout": "strip_3",
     "frame_color": "white",
@@ -144,12 +150,9 @@ def api_start_session():
 
     session_state["session_id"] = sid
     session_state["session_folder"] = session_folder
+    target_photos = 4 if "4" in session_state["layout"] else 3
+    session_state["slots"] = [None] * target_photos
     session_state["photos"] = []
-    session_state["layout"] = data.get("layout", "strip_3")
-    session_state["frame_color"] = data.get("frame_color", "white")
-    session_state["filter"] = data.get("filter", "original")
-    session_state["title"] = data.get("title", "PHOTOBOX STUDIO")
-    session_state["strip_path"] = None
 
     # Pastikan jendela Live View digiCamControl tertutup (agar tidak popup dan tidak lag)
     close_dcc_liveview()
@@ -158,17 +161,30 @@ def api_start_session():
         "success": True,
         "session_id": sid,
         "layout": session_state["layout"],
-        "target_photos": 4 if "4" in session_state["layout"] else 3,
+        "target_photos": target_photos,
     })
 
 
 @app.route("/api/capture", methods=["POST"])
 def api_capture():
-    """Memicu kamera untuk menjepret 1 foto dan menunggu file tersimpan."""
+    """Memicu kamera untuk menjepret 1 foto dan mengisi slot tertentu."""
     sid = session_state.get("session_id")
     folder = session_state.get("session_folder")
     if not sid or not folder:
         return jsonify({"success": False, "error": "Sesi belum dimulai"}), 400
+
+    data = request.get_json(silent=True) or {}
+    requested_slot = data.get("slot_index")
+    slots = session_state.get("slots", [])
+
+    if requested_slot is not None:
+        slot_index = int(requested_slot)
+    else:
+        # Cari slot kosong pertama
+        try:
+            slot_index = slots.index(None)
+        except ValueError:
+            slot_index = 0
 
     # Catat file jpg yang sudah ada sebelum jepret
     existing_files = set(glob.glob(os.path.join(folder, "*.jpg")))
@@ -200,7 +216,6 @@ def api_capture():
         current_files = set(glob.glob(os.path.join(folder, "*.jpg")))
         added = current_files - existing_files
         if added:
-            # Pastikan ukuran file sudah stabil / transfer selesai
             candidate = list(added)[0]
             try:
                 size1 = os.path.getsize(candidate)
@@ -215,14 +230,28 @@ def api_capture():
     if not new_photo:
         return jsonify({"success": False, "error": "Timeout menunggu foto dari kamera"}), 504
 
-    session_state["photos"].append(new_photo)
+    # Simpan ke slot yang ditargetkan
+    if 0 <= slot_index < len(slots):
+        slots[slot_index] = new_photo
+    else:
+        slots.append(new_photo)
+
+    session_state["slots"] = slots
+    session_state["photos"] = [p for p in slots if p]
+
     filename = os.path.basename(new_photo)
     photo_url = f"/captures/raw/{sid}/{filename}"
+    slot_urls = [
+        f"/captures/raw/{sid}/{os.path.basename(p)}" if p else None
+        for p in slots
+    ]
 
     return jsonify({
         "success": True,
         "photo_url": photo_url,
-        "current_count": len(session_state["photos"]),
+        "slot_index": slot_index,
+        "all_slots_filled": all(s is not None for s in slots) and len(slots) > 0,
+        "slots": slot_urls,
     })
 
 
@@ -231,7 +260,9 @@ def api_generate_strip():
     """Menyusun semua foto sesi menjadi Photo Strip dan membuat QR Code download."""
     data = request.get_json(silent=True) or {}
     sid = session_state.get("session_id")
-    photos = session_state.get("photos", [])
+    photos = [p for p in session_state.get("slots", []) if p]
+    if not photos:
+        photos = session_state.get("photos", [])
 
     if not sid or not photos:
         return jsonify({"success": False, "error": "Tidak ada foto untuk disusun"}), 400
@@ -242,8 +273,7 @@ def api_generate_strip():
     title = data.get("title", session_state.get("title", "PHOTOBOX STUDIO"))
 
     # 1. Generate QR Code untuk download
-    local_ip = get_local_ip()
-    download_url = f"http://{local_ip}:5000/download/{sid}"
+    download_url = f"{PUBLIC_BASE_URL.rstrip('/')}/download/{sid}"
     qr_filename = f"qr_{sid}.png"
     qr_path = os.path.join(QR_DIR, qr_filename)
 
@@ -330,6 +360,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  PHOTOBOX STUDIO RUNNING")
     print(f"  Akses Kiosk di PC/Monitor : http://localhost:5000")
-    print(f"  Akses Download dari HP     : http://{ip}:5000")
+    print(f"  Akses Download (Public)   : {PUBLIC_BASE_URL}")
+    print(f"  Akses Download (LAN IP)   : http://{ip}:5000")
     print("=" * 60)
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

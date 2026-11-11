@@ -763,3 +763,287 @@ body {
   margin-bottom: 20px;
 }
 
+/* ================= GLOBAL SESSION TIMER ================= */
+.session-timer-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1.5px solid #22c55e;
+  color: #22c55e;
+  padding: 6px 18px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.session-timer-pill .timer-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.session-timer-pill.warning {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: #eab308;
+  color: #eab308;
+}
+
+.session-timer-pill.danger {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+  animation: timerPulse 1s infinite alternate;
+}
+
+@keyframes timerPulse {
+  from { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+  to { transform: scale(1.06); box-shadow: 0 0 22px rgba(239, 68, 68, 0.7); }
+}
+
+/* ================= RETAKE BANNER DI LIVE VIEW ================= */
+.retake-banner {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  padding: 8px 24px;
+  border-radius: 30px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 20px rgba(217, 119, 6, 0.5);
+  z-index: 7;
+}
+
+/* ================= MANUAL SHOOT CONTROLS ================= */
+.shoot-controls {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-capture-large {
+  padding: 16px 42px;
+  font-size: 19px;
+  letter-spacing: 1px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(253, 116, 108, 0.5);
+  cursor: pointer;
+}
+
+.btn-capture-large .cam-icon {
+  font-size: 24px;
+}
+
+.btn-capture-large:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(1);
+  transform: none !important;
+}
+
+.shoot-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.shoot-hint strong {
+  color: var(--primary-color);
+}
+
+/* ================= SLOTS TRAY ================= */
+.slots-tray {
+  display: flex;
+  gap: 14px;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.slot-thumb {
+  width: 72px;
+  height: 50px;
+  border-radius: 10px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-color);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: all 0.25s;
+}
+
+.slot-thumb.active {
+  border-color: var(--primary-color);
+  border-style: solid;
+  box-shadow: 0 0 16px rgba(253, 116, 108, 0.5);
+}
+
+.slot-thumb.filled {
+  border-color: #22c55e;
+  border-style: solid;
+}
+
+.slot-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slot-thumb .slot-check {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 11px;
+}
+
+/* ================= SCREEN REVIEW & SELECTIVE RETAKE ================= */
+.review-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.review-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.review-sub {
+  color: var(--text-muted);
+  font-size: 15px;
+  max-width: 600px;
+  margin: 8px auto 0;
+}
+
+.slots-cards-grid {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.slot-card {
+  flex: 1;
+  min-width: 220px;
+  max-width: 280px;
+  background: var(--surface-color);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  transition: transform 0.25s, border-color 0.25s;
+}
+
+.slot-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(253, 116, 108, 0.4);
+}
+
+.slot-card-preview {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.slot-card-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.slot-card-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.slot-card-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.btn-retake-slot {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--surface-border);
+  color: var(--text-main);
+  padding: 10px 18px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-retake-slot:hover {
+  background: var(--primary-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(253, 116, 108, 0.4);
+}
+
+.btn-retake-slot:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.review-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.btn-large {
+  padding: 18px 48px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.review-timer-info {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.review-timer-info strong {
+  color: #22c55e;
+}
+
