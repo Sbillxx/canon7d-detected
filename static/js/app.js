@@ -1,10 +1,10 @@
 /**
  * PHOTOBOX STUDIO - CLIENT SCRIPT
- * Mengatur alur pemotretan, audio synthesizer Web Audio API,
- * countdown animasi, dan preview foto.
+ * Mendukung HDMI Capture Card 60FPS (Webcam mode) + USB Trigger digiCamControl
+ * Disertai Flash, Chime, dan Instant Photo Preview per Pose.
  */
 
-// ================= AUDIO SYNTHESIZER (Tanpa file eksternal) =================
+// ================= AUDIO SYNTHESIZER =================
 let audioCtx = null;
 
 function initAudio() {
@@ -29,21 +29,18 @@ function playBeep(freq = 800, duration = 0.1) {
 
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
-  } catch (e) {
-    // Abaikan jika audio diblokir browser
-  }
+  } catch (e) {}
 }
 
 function playShutterSound() {
   try {
     initAudio();
-    // Suara simulasi klik mekanik kamera
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
     osc.type = "triangle";
-    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.setValueAtTime(160, now);
     osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
 
     gain.gain.setValueAtTime(0.8, now);
@@ -57,6 +54,25 @@ function playShutterSound() {
   } catch (e) {}
 }
 
+function playSuccessChime() {
+  try {
+    initAudio();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, now);       // C5
+    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.4);
+  } catch (e) {}
+}
+
 // ================= STATE SISTEM =================
 const state = {
   layout: "strip_3",
@@ -67,7 +83,7 @@ const state = {
   sessionId: null,
   stripUrl: null,
   qrUrl: null,
-  liveviewInterval: null,
+  preferredVideoId: null,
   resetTimer: null,
 };
 
@@ -80,7 +96,13 @@ const screens = {
   preview: document.getElementById("screen-preview"),
 };
 
+const hdmiVideo = document.getElementById("hdmi-video");
 const liveviewImg = document.getElementById("liveview-img");
+const shotPreviewOverlay = document.getElementById("shot-preview-overlay");
+const shotPreviewImg = document.getElementById("shot-preview-img");
+const shotPreviewNum = document.getElementById("shot-preview-num");
+const videoSourceSelect = document.getElementById("video-source-select");
+
 const countdownOverlay = document.getElementById("countdown-overlay");
 const countdownNum = document.getElementById("countdown-num");
 const intermissionOverlay = document.getElementById("intermission-overlay");
@@ -100,7 +122,7 @@ function showScreen(name) {
     screens[key].classList.toggle("active", key === name);
   });
   if (name !== "shoot") {
-    stopLiveView();
+    stopCameraPreview();
   }
 }
 
@@ -127,64 +149,176 @@ async function checkCameraStatus() {
 setInterval(checkCameraStatus, 4000);
 checkCameraStatus();
 
-// ================= HIGH-PERFORMANCE LIVE VIEW STREAM =================
-let isLiveViewActive = false;
-let isFrameInFlight = false;
-let useDirectDCC = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+// ================= WEBCAM / HDMI STREAM & FALLBACK =================
+let activeWebcamStream = null;
+let isUsbPollingActive = false;
+let isUsbFrameInFlight = false;
 
-function startLiveView() {
-  stopLiveView();
-  isLiveViewActive = true;
-  isFrameInFlight = false;
-  fetchNextLiveFrame();
+async function populateCameraDevices() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try {
+    const previousVal = videoSourceSelect.value;
+
+    // Minta izin kamera agar label nama device (ezcap, dll) bisa dibaca browser
+    try {
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      tempStream.getTracks().forEach((t) => t.stop());
+    } catch (e) {
+      console.warn("Izin kamera belum diberikan oleh user:", e);
+    }
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+    videoSourceSelect.innerHTML = "";
+
+    const optAuto = document.createElement("option");
+    optAuto.value = "auto";
+    optAuto.textContent = "✨ Otomatis (HDMI Capture Card 60 FPS)";
+    videoSourceSelect.appendChild(optAuto);
+
+    let foundCaptureCardId = null;
+
+    videoDevices.forEach((dev, idx) => {
+      const opt = document.createElement("option");
+      opt.value = dev.deviceId;
+      const label = dev.label || `Kamera ${idx + 1}`;
+      opt.textContent = `📹 ${label}`;
+      videoSourceSelect.appendChild(opt);
+
+      const lower = label.toLowerCase();
+      if (
+        lower.includes("game link") ||
+        lower.includes("ezcap") ||
+        lower.includes("capture") ||
+        lower.includes("cam link") ||
+        lower.includes("hdmi") ||
+        lower.includes("usb video")
+      ) {
+        foundCaptureCardId = dev.deviceId;
+      }
+    });
+
+    const optUsb = document.createElement("option");
+    optUsb.value = "dcc_usb";
+    optUsb.textContent = "🔌 USB digiCamControl (Standard)";
+    videoSourceSelect.appendChild(optUsb);
+
+    if (foundCaptureCardId) {
+      state.preferredVideoId = foundCaptureCardId;
+    }
+
+    // Pertahankan pilihan user jika sebelumnya sudah memilih
+    if (previousVal && [...videoSourceSelect.options].some((o) => o.value === previousVal)) {
+      videoSourceSelect.value = previousVal;
+    } else if (foundCaptureCardId) {
+      // Otomatis pilih ezcap HDMI Capture Card langsung di dropdown!
+      videoSourceSelect.value = foundCaptureCardId;
+    }
+  } catch (err) {
+    console.warn("Gagal membaca daftar kamera:", err);
+  }
 }
 
-function stopLiveView() {
-  isLiveViewActive = false;
-  isFrameInFlight = false;
+async function startCameraPreview() {
+  const chosen = videoSourceSelect.value;
+  console.log("[Photobox] Memulai preview kamera. Pilihan:", chosen);
+
+  if (chosen === "dcc_usb") {
+    // Mode USB murni
+    stopWebcamStream();
+    hdmiVideo.style.display = "none";
+    liveviewImg.style.display = "block";
+    startUsbPolling();
+    return;
+  }
+
+  // Mode HDMI (Webcam) 60 FPS
+  stopUsbPolling();
+  liveviewImg.style.display = "none";
+  hdmiVideo.style.display = "block";
+
+  let targetDeviceId = chosen === "auto" ? state.preferredVideoId : chosen;
+  console.log("[Photobox] Target deviceId:", targetDeviceId);
+
+  // Jangan pasang batasan 'min' agar ezcap tidak throw OverconstrainedError
+  const constraints = {
+    video: targetDeviceId
+      ? { deviceId: { exact: targetDeviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      : { width: { ideal: 1920 }, height: { ideal: 1080 } },
+    audio: false,
+  };
+
+  try {
+    activeWebcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+    hdmiVideo.srcObject = activeWebcamStream;
+    await hdmiVideo.play();
+    console.log("[Photobox] HDMI Webcam berhasil aktif pada video element!");
+  } catch (err) {
+    console.error("[Photobox] Gagal membuka HDMI Video:", err);
+    alert("Perhatian: Browser tidak dapat membuka video dari HDMI Capture Card (" + (err.name || err.message) + "). Pastikan izin kamera di browser diizinkan.");
+    hdmiVideo.style.display = "none";
+    liveviewImg.style.display = "block";
+    startUsbPolling();
+  }
 }
 
-function fetchNextLiveFrame() {
-  if (!isLiveViewActive || isFrameInFlight) return;
+function stopCameraPreview() {
+  stopWebcamStream();
+  stopUsbPolling();
+}
 
-  isFrameInFlight = true;
+function stopWebcamStream() {
+  if (activeWebcamStream) {
+    activeWebcamStream.getTracks().forEach((track) => track.stop());
+    activeWebcamStream = null;
+  }
+  if (hdmiVideo) {
+    hdmiVideo.srcObject = null;
+  }
+}
+
+// Fallback USB Image Polling
+function startUsbPolling() {
+  stopUsbPolling();
+  isUsbPollingActive = true;
+  isUsbFrameInFlight = false;
+  fetchNextUsbFrame();
+}
+
+function stopUsbPolling() {
+  isUsbPollingActive = false;
+  isUsbFrameInFlight = false;
+}
+
+function fetchNextUsbFrame() {
+  if (!isUsbPollingActive || isUsbFrameInFlight) return;
+  isUsbFrameInFlight = true;
   const t0 = performance.now();
   const nextFrame = new Image();
 
-  // Jika diakses lokal di PC, tembak langsung port 5513 untuk 0 latency & 25 FPS
-  const frameUrl = useDirectDCC
-    ? `http://127.0.0.1:5513/liveview.jpg?rand=${Math.random()}`
-    : `/api/liveview.jpg?t=${Date.now()}`;
-
   nextFrame.onload = () => {
-    if (!isLiveViewActive) return;
+    if (!isUsbPollingActive) return;
     liveviewImg.src = nextFrame.src;
-    isFrameInFlight = false;
-
-    // Adaptif: jeda minimal agar 20-25 FPS mulus tanpa numpuk antrean
+    isUsbFrameInFlight = false;
     const elapsed = performance.now() - t0;
-    const targetDelay = Math.max(15, 45 - elapsed);
-    setTimeout(fetchNextLiveFrame, targetDelay);
+    setTimeout(fetchNextUsbFrame, Math.max(15, 45 - elapsed));
   };
 
   nextFrame.onerror = () => {
-    isFrameInFlight = false;
-    // Jika akses langsung gagal, fallback ke proxy Flask
-    if (useDirectDCC) {
-      useDirectDCC = false;
-    }
-    if (isLiveViewActive) {
-      setTimeout(fetchNextLiveFrame, 150);
+    isUsbFrameInFlight = false;
+    if (isUsbPollingActive) {
+      setTimeout(fetchNextUsbFrame, 200);
     }
   };
 
-  nextFrame.src = frameUrl;
+  nextFrame.src = `http://127.0.0.1:5513/liveview.jpg?rand=${Math.random()}`;
 }
 
 // ================= EFEK FLASH =================
 function triggerFlash() {
   flashOverlay.classList.remove("active");
-  void flashOverlay.offsetWidth; // trigger reflow
+  void flashOverlay.offsetWidth;
   flashOverlay.classList.add("active");
   playShutterSound();
 }
@@ -192,8 +326,9 @@ function triggerFlash() {
 // ================= ALUR SHOOTING / COUNTDOWN =================
 async function startPhotoSession() {
   showScreen("shoot");
-  startLiveView();
+  await startCameraPreview();
   thumbsRibbon.innerHTML = "";
+  shotPreviewOverlay.style.display = "none";
   state.currentPose = 1;
   state.totalPoses = state.layout.includes("4") ? 4 : 3;
 
@@ -210,7 +345,7 @@ async function startPhotoSession() {
     const data = await res.json();
     state.sessionId = data.session_id;
 
-    // Jeda 1.5 detik agar user bersiap
+    // Jeda 1.5 detik agar pelanggan bersiap
     setTimeout(runCountdownStep, 1500);
   } catch (e) {
     alert("Gagal memulai sesi: " + e.message);
@@ -221,6 +356,7 @@ async function startPhotoSession() {
 function runCountdownStep() {
   poseIndicator.textContent = `Pose ${state.currentPose} dari ${state.totalPoses}`;
   intermissionOverlay.style.display = "none";
+  shotPreviewOverlay.style.display = "none";
   countdownOverlay.style.display = "flex";
 
   let count = 3;
@@ -249,20 +385,30 @@ async function capturePhoto() {
     const data = await res.json();
 
     if (data.success && data.photo_url) {
-      // Tambah thumbnail ke ribbon
+      // 1. Tambah thumbnail ke ribbon bawah
       const thumb = document.createElement("div");
       thumb.className = "thumb-item";
       thumb.innerHTML = `<img src="${data.photo_url}" alt="Pose ${state.currentPose}">`;
       thumbsRibbon.appendChild(thumb);
 
+      // 2. POPUP INSTAN PREVIEW HASIL FOTO BARUSAN! ("Oh gini oke!")
+      shotPreviewImg.src = `${data.photo_url}?t=${Date.now()}`;
+      shotPreviewNum.textContent = state.currentPose;
+      shotPreviewOverlay.style.display = "flex";
+      playSuccessChime();
+
+      // Tampilkan hasil foto selama 1.8 detik
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+      shotPreviewOverlay.style.display = "none";
+
       if (state.currentPose < state.totalPoses) {
-        // Tampilkan istirahat antar pose (3.5 detik)
+        // Tampilkan istirahat antar pose (2.5 detik)
         state.currentPose++;
         intermissionOverlay.style.display = "flex";
-        setTimeout(runCountdownStep, 3500);
+        setTimeout(runCountdownStep, 2500);
       } else {
-        // Selesai semua pose -> Generate Photo Strip
-        setTimeout(finishAndGenerateStrip, 1000);
+        // Selesai semua pose -> Susun Photo Strip
+        setTimeout(finishAndGenerateStrip, 500);
       }
     } else {
       alert("Gagal mengambil foto: " + (data.error || "Timeout"));
@@ -354,9 +500,13 @@ function showQrModal() {
 
 // ================= EVENT LISTENERS =================
 document.addEventListener("DOMContentLoaded", () => {
+  // Inisialisasi daftar kamera (deteksi HDMI Capture Card)
+  populateCameraDevices();
+
   // Screen 1: Welcome
   document.getElementById("btn-start").addEventListener("click", () => {
     initAudio();
+    populateCameraDevices();
     showScreen("setup");
   });
 
@@ -425,6 +575,22 @@ document.addEventListener("DOMContentLoaded", () => {
     showScreen("welcome");
   });
 
+  // Tombol Flip / Mirror View
+  const btnToggleMirror = document.getElementById("btn-toggle-mirror");
+  if (btnToggleMirror) {
+    btnToggleMirror.addEventListener("click", () => {
+      const wrapper = document.querySelector(".liveview-wrapper");
+      if (wrapper) {
+        wrapper.classList.toggle("mirrored");
+        const isNowMirrored = wrapper.classList.contains("mirrored");
+        const btnText = document.getElementById("mirror-btn-text");
+        if (btnText) {
+          btnText.textContent = isNowMirrored ? "Mode Cermin" : "Flip Normal";
+        }
+      }
+    });
+  }
+
   // Foto Ulang (Retake)
   document.getElementById("btn-retake").addEventListener("click", () => {
     if (confirm("Ingin foto ulang dari awal? Foto sebelumnya akan diganti.")) {
@@ -432,4 +598,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-

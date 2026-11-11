@@ -82,26 +82,22 @@ def index():
 
 
 def check_dcc_camera():
-    """Cek apakah kamera terdeteksi oleh digiCamControl."""
-    if os.path.exists(DCC_REMOTECMD):
-        try:
-            cmd = f'echo "" | "{DCC_REMOTECMD}" /c "list cameras"'
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
-            if "response:[\"" in res.stdout:
-                return True
-        except Exception:
-            pass
+    """Cek apakah kamera terdeteksi oleh digiCamControl via HTTP tanpa spawn process."""
+    try:
+        r = http_session.get(f"{DCC_BASE_URL}/?CMD=Get_Version", timeout=1)
+        if r.status_code == 200:
+            return True
+    except Exception:
+        pass
     return False
 
 
-def ensure_liveview_active():
-    """Pastikan jendela Live View aktif agar stream JPEG menyala."""
-    if os.path.exists(DCC_REMOTECMD):
-        try:
-            cmd = f'echo "" | "{DCC_REMOTECMD}" /c "do LiveViewWnd_Show"'
-            subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
-        except Exception:
-            pass
+def close_dcc_liveview():
+    """Pastikan jendela Live View digiCamControl tertutup agar tidak popup dan tidak makan USB bandwidth."""
+    try:
+        http_session.get(f"{DCC_BASE_URL}/?CMD=LiveViewWnd_Hide", timeout=2)
+    except Exception:
+        pass
 
 
 @app.route("/api/status")
@@ -109,20 +105,10 @@ def api_status():
     """Cek status koneksi ke digiCamControl dan kamera."""
     status = {"dcc_running": False, "camera_connected": False, "liveview_active": False}
     try:
-        r = requests.get(f"{DCC_BASE_URL}/?CMD=Get_Version", timeout=2)
+        r = http_session.get(f"{DCC_BASE_URL}/?CMD=Get_Version", timeout=1.5)
         if r.status_code == 200:
             status["dcc_running"] = True
-    except Exception:
-        pass
-
-    # Cek daftar kamera terhubung
-    status["camera_connected"] = check_dcc_camera()
-
-    # Cek apakah Live View aktif menghasilkan gambar
-    try:
-        r = requests.get(f"{DCC_BASE_URL}/liveview.jpg", timeout=2)
-        if r.status_code == 200 and len(r.content) > 1000:
-            status["liveview_active"] = True
+            status["camera_connected"] = True
     except Exception:
         pass
 
@@ -165,8 +151,8 @@ def api_start_session():
     session_state["title"] = data.get("title", "PHOTOBOX STUDIO")
     session_state["strip_path"] = None
 
-    # Pastikan jendela live view aktif
-    ensure_liveview_active()
+    # Pastikan jendela Live View digiCamControl tertutup (agar tidak popup dan tidak lag)
+    close_dcc_liveview()
 
     return jsonify({
         "success": True,
@@ -187,14 +173,24 @@ def api_capture():
     # Catat file jpg yang sudah ada sebelum jepret
     existing_files = set(glob.glob(os.path.join(folder, "*.jpg")))
 
-    # Picu jepret kamera
-    try:
-        requests.get(f"{DCC_BASE_URL}/?CMD=LiveView_Capture", timeout=4)
-    except Exception:
+    # Picu jepret kamera via digiCamControl
+    triggered = False
+    for cmd in ["Capture", "LiveView_Capture"]:
         try:
-            requests.get(f"{DCC_BASE_URL}/?CMD=Capture", timeout=4)
+            r = http_session.get(f"{DCC_BASE_URL}/?CMD={cmd}", timeout=3)
+            if r.status_code == 200:
+                triggered = True
+                break
+        except Exception:
+            continue
+
+    if not triggered:
+        # Fallback via RemoteCmd
+        try:
+            subprocess.run(f'echo "" | "{DCC_REMOTECMD}" /c capture', shell=True, timeout=4)
+            triggered = True
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            return jsonify({"success": False, "error": f"Gagal trigger shutter: {e}"}), 500
 
     # Tunggu file baru muncul dan selesai ditransfer (maksimal 7 detik)
     new_photo = None

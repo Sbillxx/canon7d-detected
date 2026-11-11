@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>PHOTOBOX STUDIO</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
@@ -79,6 +79,17 @@
         </div>
       </div>
 
+      <!-- Pilihan Sumber Kamera (HDMI 60FPS vs USB) -->
+      <div class="option-group">
+        <label class="group-label">Sumber Live Preview:</label>
+        <div class="select-wrapper">
+          <select id="video-source-select" class="custom-select">
+            <option value="auto">✨ Otomatis (HDMI Capture Card 60 FPS)</option>
+            <option value="dcc_usb">🔌 USB digiCamControl</option>
+          </select>
+        </div>
+      </div>
+
       <div class="setup-actions">
         <button id="btn-back-welcome" class="btn-secondary">Kembali</button>
         <button id="btn-ready-shoot" class="btn-primary">Lanjut ke Kamera ➔</button>
@@ -92,10 +103,29 @@
       
       <!-- Live View Mirror Box -->
       <div class="liveview-wrapper">
-        <img id="liveview-img" src="/static/img/placeholder.jpg" alt="Live View Kamera">
+        <!-- Video Feed dari HDMI Capture Card (60 FPS Mulus!) -->
+        <video id="hdmi-video" autoplay playsinline muted></video>
+
+        <!-- Fallback Gambar USB dari digiCamControl jika HDMI tidak aktif -->
+        <img id="liveview-img" src="/static/img/placeholder.jpg" alt="Live View Kamera" style="display: none;">
         
+        <!-- Snapshot Preview Overlay: Muncul tepat setelah foto selesai dijepret! -->
+        <div id="shot-preview-overlay" class="shot-preview-overlay">
+          <div class="shot-preview-card">
+            <img id="shot-preview-img" src="" alt="Hasil Foto Barusan">
+            <div class="shot-preview-badge">
+              <span>✨ POSE <span id="shot-preview-num">1</span> TERSIMPAN!</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Overlay Petunjuk Pose -->
         <div class="pose-badge" id="pose-indicator">Pose 1 dari 3</div>
+
+        <!-- Tombol Flip / Mirror View -->
+        <button id="btn-toggle-mirror" class="mirror-toggle-btn" type="button" title="Flip / Balik Tampilan">
+          🔄 <span id="mirror-btn-text">Flip Normal</span>
+        </button>
 
         <!-- Overlay Countdown Angka Besar -->
         <div class="countdown-overlay" id="countdown-overlay">
@@ -182,7 +212,7 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v=2"></script>
 </body>
 </html>
 
